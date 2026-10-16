@@ -50,3 +50,13 @@ test('getItem throwing gives defaults', () => {
   const s = { getItem() { throw new Error('denied'); }, setItem() {} };
   assert.deepEqual(loadSettings(s), defaults);
 });
+
+test('safeStorage falls back to memory when access throws', async () => {
+  const { safeStorage } = await import('../src/storage.js');
+  const s = safeStorage(() => { throw new Error('blocked'); });
+  assert.equal(s.getItem('k'), null);
+  saveSettings(s, defaults);
+  assert.deepEqual(loadSettings(s), defaults);
+  const real = fake();
+  assert.equal(safeStorage(() => real), real);
+});

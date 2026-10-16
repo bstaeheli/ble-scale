@@ -35,6 +35,14 @@ export function loadSettings(storage) {
   }
 }
 
+// localStorage, or an in-memory stand-in when access throws (Safari with blocked site data).
+export function safeStorage(get = () => localStorage) {
+  try { return get(); } catch {
+    const m = new Map();
+    return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => void m.set(k, String(v)) };
+  }
+}
+
 export function saveSettings(storage, settings) {
   storage.setItem(KEY, JSON.stringify(settings));
 }

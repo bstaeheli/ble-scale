@@ -1,6 +1,6 @@
 // Offline support: precache the app, then network-first with cache fallback.
 // Bump CACHE on each release.
-const CACHE = 'waage-v1';
+const CACHE = 'waage-v2';
 const FILES = [
   './',
   'index.html',
@@ -32,7 +32,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  e.respondWith(fetch(req)
+  e.respondWith(fetch(req, { cache: 'no-cache' }) // revalidate: skip the 10 min HTTP cache
     .then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
       return res;

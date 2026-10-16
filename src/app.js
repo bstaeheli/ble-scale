@@ -3,7 +3,7 @@ import * as ble from './ble.js';
 import { decodeAdvertisement } from './scales/index.js';
 import { Measurement } from './measurement.js';
 import { saveTare, selectTare, selectNone, deleteTare, activeGrams } from './tares.js';
-import { loadSettings, saveSettings } from './storage.js';
+import { loadSettings, saveSettings, safeStorage } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -18,8 +18,9 @@ const KNOWN_NAMES = ['LFSc', 'MI_SCALE', 'MI SCALE2', 'MIBFS'];
 const NO_SCAN = 'Bluetooth-Scan nicht verfügbar. Seite in Safari mit beacio öffnen.';
 
 const m = new Measurement();
-let settings = loadSettings(localStorage);
-const diag = { frames: [], dropped: 0, hex: '–', model: null, error: null };
+const store = safeStorage();
+let settings = loadSettings(store);
+const diag = { frames: [], events: 0, dropped: 0, hex: '–', rejected: '–', model: null };
 let scanError = null;
 
 // ---------- formatting ----------
@@ -39,23 +40,25 @@ const toHex = (b) => (b ? Array.from(b, (x) => x.toString(16).padStart(2, '0')).
 // ---------- persistence ----------
 function persist() {
   const { tares, theme, display } = settings;
-  try { saveSettings(localStorage, { schemaVersion: 1, tares, theme, display }); } catch {}
+  try { saveSettings(store, { schemaVersion: 1, tares, theme, display }); } catch {}
 }
 
 // ---------- scanning ----------
 function onAdvertisement(adv) {
   if (document.visibilityState !== 'visible') return;
+  diag.events++;
   const now = performance.now();
   const dec = decodeAdvertisement(adv);
   const payload = adv.manufacturerData.get(0) ?? adv.serviceData.values().next().value ?? adv.manufacturerData.values().next().value;
   if (!dec) {
-    if (adv.manufacturerData.has(0) || KNOWN_NAMES.includes(adv.name)) { diag.dropped++; diag.hex = toHex(payload); }
+    if (adv.manufacturerData.has(0) || KNOWN_NAMES.includes(adv.name)) { diag.dropped++; diag.rejected = toHex(payload); }
     return;
   }
-  diag.hex = toHex(payload);
   if (m.frame(dec, now)) {
     diag.model = dec.model;
+    diag.hex = toHex(payload);
     diag.frames.push(now);
+    while (diag.frames[0] < now - 5000) diag.frames.shift();
   }
   scheduleRender();
 }
@@ -65,11 +68,12 @@ function connect() {
   if (!scanner.scanAvailable()) { scanError = NO_SCAN; render(); return; }
   scanError = null;
   m.connect(performance.now());
-  scanner.startScan(onAdvertisement).catch((err) => {
+  const fail = (err) => {
     m.disconnect();
     scanError = `Scan fehlgeschlagen: ${err?.message ?? err}`;
     render();
-  });
+  };
+  try { scanner.startScan(onAdvertisement).catch(fail); } catch (err) { fail(err); }
   render();
 }
 
@@ -179,15 +183,17 @@ function render() {
 }
 
 function renderDiag(v, now) {
-  diag.frames = diag.frames.filter((t) => now - t <= 5000);
+  const recent = diag.frames.filter((t) => now - t <= 5000).length;
   el.diag.textContent = [
     `Zustand: ${v.phase}`,
     `Rohwert R: ${v.raw ?? '–'} g`,
     `Leerwert Z: ${v.zero ?? '–'} g`,
     `Waage: ${v.scaleId ?? '–'} (${diag.model ?? '–'})`,
-    `Frames/s: ${(diag.frames.length / 5).toFixed(1)}`,
+    `Frames/s: ${(recent / 5).toFixed(1)}`,
+    `Events: ${diag.events}`,
     `Verworfen: ${diag.dropped}`,
     `Letzte Nutzdaten: ${diag.hex}`,
+    `Zuletzt verworfen: ${diag.rejected}`,
     `requestLEScan: ${ble.scanAvailable() ? 'verfügbar' : 'nicht verfügbar'}${demo ? ' (Demo aktiv)' : ''}`,
     `Wake Lock: ${'wakeLock' in navigator ? (wakeLock ? 'gehalten' : 'nicht gehalten') : 'nicht verfügbar'}`,
   ].join('\n');
