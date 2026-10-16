@@ -1,4 +1,4 @@
-# Waage: CK829 scale web app with a 5-slot tare stack
+# ble-scale: CK829 scale web app with a 5-slot tare stack
 
 Date: 2026-10-16
 Status: approved 2026-10-16
