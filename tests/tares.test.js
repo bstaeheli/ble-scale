@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyTares, saveTare, selectTare, selectNone, deleteTare, activeGrams } from '../src/tares.js';
+import { emptyTares, saveTare, selectTare, deleteTare, activeGrams } from '../src/tares.js';
 
 let n = 0;
 const mk = () => `id${++n}`;
@@ -60,10 +60,10 @@ test('closest entry wins over earlier one', () => {
   assert.deepEqual(grams(s), [313, 310]);
 });
 
-test('selectNone keeps order', () => {
+test('selecting the active tare deactivates it, keeps order', () => {
   const s0 = build([300, 200, 100]);
-  const s = selectNone(s0);
-  assert.equal(s.activeId, null);
+  const s = selectTare(s0, s0.activeId, 5000);
+  assert.deepEqual(s, { ...s0, activeId: null });
   assert.deepEqual(grams(s), [300, 200, 100]);
   assert.equal(activeGrams(s), 0);
 });
@@ -82,7 +82,7 @@ test('inputs are not mutated', () => {
   const s0 = build([30, 20, 10]);
   const copy = structuredClone(s0);
   saveTare(s0, 21, 2, mk); saveTare(s0, 99, 2, mk);
-  selectTare(s0, s0.stack[2].id, 2); selectNone(s0); deleteTare(s0, s0.stack[0].id);
+  selectTare(s0, s0.stack[2].id, 2); deleteTare(s0, s0.stack[0].id);
   assert.deepEqual(s0, copy);
 });
 

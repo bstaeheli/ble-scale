@@ -72,7 +72,6 @@ test('decodeAdvertisement tags model and prefixes scaleId', () => {
     scaleId: 'ck829:cf:e9:09:19:41:d8',
     model: 'ck829',
     unit: 'g',
-    zeroReference: true,
     tare: true,
   });
 });
@@ -95,8 +94,8 @@ const v2 = (b0, b1, raw, len = 13) => {
 };
 
 test('driver capabilities', () => {
-  assert.deepEqual([xiaomiV1.id, xiaomiV1.unit, xiaomiV1.zeroReference, xiaomiV1.tare], ['xiaomi-v1', 'kg', false, false]);
-  assert.deepEqual([xiaomiV2.id, xiaomiV2.unit, xiaomiV2.zeroReference, xiaomiV2.tare], ['xiaomi-v2', 'kg', false, false]);
+  assert.deepEqual([xiaomiV1.id, xiaomiV1.unit, xiaomiV1.tare], ['xiaomi-v1', 'kg', false]);
+  assert.deepEqual([xiaomiV2.id, xiaomiV2.unit, xiaomiV2.tare], ['xiaomi-v2', 'kg', false]);
 });
 
 test('xiaomi v1 units', () => {
@@ -123,7 +122,7 @@ test('xiaomi v2', () => {
 
 test('decodeAdvertisement for person scales', () => {
   assert.deepEqual(decodeAdvertisement(v1(0x22, 14470, 'dev')), {
-    grams: 72350, scaleId: 'xiaomi-v1:dev', model: 'xiaomi-v1', unit: 'kg', zeroReference: false, tare: false,
+    grams: 72350, scaleId: 'xiaomi-v1:dev', model: 'xiaomi-v1', unit: 'kg', tare: false,
   });
   assert.equal(decodeAdvertisement(v2(0x02, 0x24, 14470)).model, 'xiaomi-v2');
 });

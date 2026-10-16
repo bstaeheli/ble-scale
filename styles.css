@@ -1,4 +1,4 @@
-/* Layout: one portrait screen (state line, big weight, five tare rows, two buttons), no page scroll. */
+/* Layout: one portrait screen (state line, big weight, five tare rows, save button), no page scroll. */
 @font-face {
   font-family: "Archivo";
   src: url("fonts/archivo.woff2") format("woff2");
@@ -9,17 +9,17 @@
 
 :root {
   --bg: #f8faf9; --ink: #17211e; --muted: #5d6b67; --line: #cfd8d5;
-  --accent: #0d6b57; --accent-ink: #ffffff; --live: #1f8a4c; --warn: #a3620a; --warn-bg: #fbefdc; --danger: #b3261e;
+  --accent: #0d6b57; --accent-ink: #ffffff; --live: #1f8a4c; --warn: #a3620a; --danger: #b3261e;
   --font: "Archivo", "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #151c1a; --ink: #e8efec; --muted: #94a39e; --line: #2c3633;
-  --accent: #4dbf9f; --accent-ink: #0b1714; --live: #5fd08e; --warn: #f0b45a; --warn-bg: #33270f; --danger: #e5675e;
+  --accent: #4dbf9f; --accent-ink: #0b1714; --live: #5fd08e; --warn: #f0b45a; --danger: #e5675e;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #151c1a; --ink: #e8efec; --muted: #94a39e; --line: #2c3633;
-  --accent: #4dbf9f; --accent-ink: #0b1714; --live: #5fd08e; --warn: #f0b45a; --warn-bg: #33270f; --danger: #e5675e;
+  --accent: #4dbf9f; --accent-ink: #0b1714; --live: #5fd08e; --warn: #f0b45a; --danger: #e5675e;
   color-scheme: dark;
 }
 
@@ -52,10 +52,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .num small { display: inline-block; font-size: 0.38em; font-weight: 600; font-stretch: 100%; margin-left: 0.08em; color: var(--muted); }
 .sub { color: var(--muted); font-size: 0.9rem; text-align: center; }
 .stale .num { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 4px; }
-.prompt { font-size: 1.5rem; font-weight: 750; font-stretch: 90%; text-align: center; text-wrap: balance; line-height: 1.15; }
-.prompt-box { background: var(--warn-bg); color: var(--ink); width: 100%; border-radius: 16px; padding: 18px 12px; display: grid; gap: 4px; }
-.ready { background: var(--accent); color: var(--accent-ink); }
-.ready .sub { color: inherit; opacity: 0.85; }
 .connect { display: grid; place-items: center; width: 100%; min-height: 64px; border-radius: 16px; background: var(--ink); color: var(--bg);
   font-size: 1.15rem; font-weight: 700; }
 
@@ -78,10 +74,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 /* Bottom buttons */
 .btn { min-height: 52px; border-radius: 14px; border: 1.5px solid var(--line); background: none; font-size: 1rem; font-weight: 650; }
-.btn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .btn:disabled { opacity: 0.35; cursor: default; }
-.actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.actions { display: grid; }
 
 .toast { position: absolute; left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right));
   bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); background: var(--ink); color: var(--bg); border-radius: 14px;

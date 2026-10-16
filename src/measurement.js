@@ -13,7 +13,6 @@ export class Measurement {
     this.raw = null;
     this.lastT = null;
     this.samples = [];
-    this.zero = null;
     this.scaleId = null;
     this.staleTotal = null;
     this.unit = null;
@@ -22,30 +21,25 @@ export class Measurement {
 
   connect(now) {
     this._clear();
-    this.phase = 'needEmpty';
+    this.phase = 'live';
     this.connectedAt = now;
   }
 
   disconnect() {
     this.phase = 'disconnected';
-    this.zero = null;
     this.samples = [];
   }
 
-  frame({ grams, scaleId, unit = 'g', zeroReference = true, tare = true }, now) {
+  frame({ grams, scaleId, unit = 'g', tare = true }, now) {
     if (this.phase === 'disconnected') return false;
     if (this.scaleId !== null && scaleId !== this.scaleId) return false;
     this.scaleId = scaleId;
     this.unit = unit;
     this.tare = tare;
     if (this.phase === 'stale') {
-      this.phase = 'needEmpty';
+      this.phase = 'live';
       this.staleTotal = null;
       this.samples = [];
-    }
-    if (!zeroReference) {
-      this.zero = 0;
-      this.phase = 'live';
     }
     this.raw = grams;
     this.lastT = now;
@@ -55,9 +49,8 @@ export class Measurement {
   }
 
   tick(now) {
-    if ((this.phase === 'needEmpty' || this.phase === 'live') && this.lastT !== null && now - this.lastT > this.o.staleMs) {
-      this.staleTotal = this.zero !== null ? this.raw - this.zero : null;
-      this.zero = null;
+    if (this.phase === 'live' && this.lastT !== null && now - this.lastT > this.o.staleMs) {
+      this.staleTotal = this.raw;
       this.samples = [];
       this.phase = 'stale';
     }
@@ -82,26 +75,12 @@ export class Measurement {
     );
   }
 
-  confirmEmpty(now) {
-    if (this.phase !== 'needEmpty' || !this.isSteady(now)) return false;
-    this.zero = this.raw;
-    this.phase = 'live';
-    return true;
-  }
-
-  resetZero() {
-    if (this.phase !== 'live') return;
-    this.zero = null;
-    this.phase = 'needEmpty';
-  }
-
   view(now) {
     const since = this.lastT ?? this.connectedAt;
     return {
       phase: this.phase,
       raw: this.raw,
-      zero: this.zero,
-      total: this.phase === 'live' ? this.raw - this.zero : null,
+      total: this.phase === 'live' ? this.raw : null,
       staleTotal: this.staleTotal,
       ageMs: this.lastT === null ? null : now - this.lastT,
       steady: this.isSteady(now),

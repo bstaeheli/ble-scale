@@ -3,7 +3,7 @@
 const LB_G = 453.59237;
 const UUID_V1 = '0000181d-0000-1000-8000-00805f9b34fb';
 const UUID_V2 = '0000181b-0000-1000-8000-00805f9b34fb';
-const person = { unit: 'kg', zeroReference: false, tare: false };
+const person = { unit: 'kg', tare: false };
 
 // raw is the little-endian value (0.01 units); factor converts 0.01 units to grams.
 const grams = (raw, perUnit) => Math.round(raw * 0.01 * perUnit);

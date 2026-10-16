@@ -2,14 +2,14 @@
 import * as ble from './ble.js';
 import { decodeAdvertisement } from './scales/index.js';
 import { Measurement } from './measurement.js';
-import { saveTare, selectTare, selectNone, deleteTare, activeGrams } from './tares.js';
+import { saveTare, selectTare, deleteTare, activeGrams } from './tares.js';
 import { loadSettings, saveSettings, safeStorage } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
-  state: $('state'), more: $('more'), big: $('big'), tares: $('tares'), row: $('tare-row'), zero: $('zero'), save: $('save'),
+  state: $('state'), more: $('more'), big: $('big'), tares: $('tares'), row: $('tare-row'), save: $('save'),
   toast: $('toast'), toastText: $('toast-text'), undo: $('undo'), sheet: $('sheet'), wake: $('wake-status'),
-  connect: $('connect'), disconnect: $('disconnect'), rezero: $('rezero'), diag: $('diag'), version: $('version'),
+  connect: $('connect'), disconnect: $('disconnect'), diag: $('diag'), version: $('version'),
 };
 
 const demo = new URLSearchParams(location.search).get('demo') === '1';
@@ -128,9 +128,6 @@ function renderTares() {
     items.push(li);
   }
   el.tares.replaceChildren(...items);
-  const none = activeId === null;
-  el.zero.classList.toggle('on', none);
-  el.zero.setAttribute('aria-pressed', String(none));
 }
 
 // ---------- rendering ----------
@@ -154,12 +151,9 @@ function render() {
   if (v.phase === 'disconnected') {
     setState('off', 'Waage nicht verbunden');
     setBig(`<span class="connect">Waage verbinden</span><span class="sub">${scanError ? esc(scanError) : (scanner.scanAvailable() ? 'Waage einschalten, dann tippen.' : NO_SCAN)}</span>`, false);
-  } else if (v.phase === 'needEmpty') {
-    setState('warn', 'Leerwert nötig');
-    const sub = v.raw === null
-      ? (v.hint ? 'Keine Daten. Waage einschalten.' : 'Warte auf Waage …')
-      : `Waage zeigt ${fmtG(v.raw)} g · ${v.steady ? 'ruhig' : 'unruhig'}`;
-    setBig(`<span class="prompt-box${v.steady ? ' ready' : ''}"><span class="prompt">Waage leer? Antippen</span><span class="sub">${sub}</span></span>`, false);
+  } else if (v.raw === null) {
+    setState('warn', 'Warte auf Waage');
+    setBig(`<span class="num">–</span><span class="sub">${v.hint ? 'Keine Daten. Waage einschalten.' : 'Warte auf Waage …'}</span>`, false);
   } else if (v.phase === 'live') {
     setState('live', 'Live');
     const sub = !tareOn ? 'Personenwaage' : T ? `netto · Tara ${fmtG(T)} g` : 'netto · ohne Tara';
@@ -168,7 +162,7 @@ function render() {
     const ago = Math.round((v.ageMs ?? 0) / 1000);
     setState('warn', `Nicht aktuell · vor ${ago} s`);
     const value = v.staleTotal === null ? '<span class="num">–</span>' : num(v.staleTotal - T, v.unit);
-    const sub = v.hint ? 'Waage antippen zum Aufwecken.<br>Danach Waage leeren und bestätigen.' : `vor ${ago} s`;
+    const sub = v.hint ? 'Waage antippen zum Aufwecken.' : `vor ${ago} s`;
     setBig(`${value}<span class="sub">${sub}</span>`, true);
   }
 
@@ -178,7 +172,6 @@ function render() {
   const connected = v.phase !== 'disconnected';
   el.connect.hidden = connected;
   el.disconnect.hidden = !connected;
-  el.rezero.disabled = v.phase !== 'live';
   if (el.sheet.open) renderDiag(v, now);
 }
 
@@ -187,7 +180,6 @@ function renderDiag(v, now) {
   el.diag.textContent = [
     `Zustand: ${v.phase}`,
     `Rohwert R: ${v.raw ?? '–'} g`,
-    `Leerwert Z: ${v.zero ?? '–'} g`,
     `Waage: ${v.scaleId ?? '–'} (${diag.model ?? '–'})`,
     `Frames/s: ${(recent / 5).toFixed(1)}`,
     `Events: ${diag.events}`,
@@ -240,15 +232,12 @@ el.big.addEventListener('click', () => {
   const now = performance.now();
   const v = m.view(now);
   if (v.phase === 'disconnected') connect();
-  else if (v.phase === 'needEmpty') { if (m.confirmEmpty(now)) render(); }
   else if (v.phase === 'live') saveCurrent(); // canSave() rejects person scales (tare false)
 });
 el.save.addEventListener('click', saveCurrent);
-el.zero.addEventListener('click', () => changeTares(selectNone(settings.tares)));
 el.more.addEventListener('click', () => { el.sheet.showModal(); render(); });
 el.connect.addEventListener('click', () => { el.sheet.close(); connect(); });
 el.disconnect.addEventListener('click', disconnect);
-el.rezero.addEventListener('click', () => { m.resetZero(); el.sheet.close(); render(); });
 
 for (const r of document.querySelectorAll('input[name=theme]')) {
   r.checked = r.value === settings.theme;

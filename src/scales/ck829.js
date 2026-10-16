@@ -4,7 +4,6 @@ export const ck829 = {
   id: 'ck829',
   name: 'CK829 (LFSc)',
   unit: 'g',
-  zeroReference: true,
   tare: true,
   filters: [{ namePrefix: 'LFSc', manufacturerData: [{ companyIdentifier: 0x0000 }] }],
   decode(adv) {

@@ -22,14 +22,14 @@ export function saveTare(state, grams, now, makeId = randomId) {
   return { stack: [entry, ...rest].slice(0, MAX), activeId: entry.id };
 }
 
+// Selecting the active tare deactivates it (no tare, order unchanged).
 export function selectTare(state, id, now) {
+  if (id === state.activeId) return { ...state, activeId: null };
   const e = state.stack.find((x) => x.id === id);
   if (!e) return state;
   const stack = [{ ...e, lastUsedAt: iso(now) }, ...state.stack.filter((x) => x.id !== id)];
   return { stack, activeId: id };
 }
-
-export const selectNone = (state) => ({ ...state, activeId: null });
 
 export const deleteTare = (state, id) => ({
   stack: state.stack.filter((e) => e.id !== id),

@@ -42,8 +42,7 @@ differs, this document wins.
 ## Anti-goals (failure even if it "works")
 
 - A missing packet shown as `0 g`.
-- A weight shown as live after auto-off, standby or a page reload without
-  a fresh empty-scale confirmation.
+- A weight shown as live after auto-off or standby without a fresh frame.
 - Settings, diagnostics or status details cluttering the main screen.
 
 ## Confirmed facts about the hardware and platform
@@ -76,8 +75,8 @@ From the requirements study and the spike tests on 2026-10-16:
   XOR is dropped and does not count as a received frame.
 - The scale switches itself off after roughly 15 s without use.
 - **Test G1 result:** when the scale wakes up with a load on it, it shows
-  `0 g`. So the scale's own zero cannot be trusted after any interruption;
-  the app needs its own empty reference (see below).
+  `0 g`. The app still trusts the scale's reading as the total weight; the
+  user zeroes the scale with its own tare key while it is empty.
 
 ## Scale drivers
 
@@ -97,21 +96,17 @@ strings as Web Bluetooth reports them). Each driver additionally declares:
 - `unit`: `'g'` or `'kg'`, the unit the app displays for this scale
   (`'kg'` with two decimals, Swiss formatting "72,35 kg"). `decode` always
   returns integer grams; the driver's `unit` only controls display.
-- `zeroReference`: `true` when the app must ask for an empty-scale
-  confirmation (CK829), `false` when the scale's own zero is trusted
-  (person scales re-zero themselves).
 - `tare`: `true` when tares apply (CK829), `false` otherwise.
 
-The registry result carries `{ grams, scaleId, model, unit, zeroReference,
-tare }`.
+The registry result carries `{ grams, scaleId, model, unit, tare }`.
 
 Drivers in version 1:
 
 - `ck829`: kitchen scale, see "Confirmed facts". unit `g`,
-  zeroReference `true`, tare `true`.
+  tare `true`.
 - `xiaomi-v1` (Mi Smart Scale) and `xiaomi-v2` (Mi Body Composition
   Scale 2): person scales, weight only (no impedance or body metrics).
-  unit `kg`, zeroReference `false`, tare `false`. **Untested on
+  unit `kg`, tare `false`. **Untested on
   hardware**; protocol taken from
   https://github.com/lolouk44/xiaomi_mi_scale:
   - v1: service data UUID `0x181D`, at least 3 bytes. Byte 0 = control:
@@ -132,21 +127,17 @@ Drivers in version 1:
 When the locked scale's `tare` is `false`, the big area shows the weight
 in kg directly in Live, the "+ Gewicht als Tara" button is disabled and a
 tap on the weight does nothing; the tare list stays visible and selectable
-but does not affect the shown weight. When `zeroReference` is `false`,
-the first frame goes straight to Live (no "Waage leer?" step) and a frame
-after "Not current" also returns straight to Live.
+but does not affect the shown weight.
 
 ## Measurement model
 
 ```
 R = raw grams from the latest valid frame
-Z = empty reference: R captured when the user confirmed "scale is empty"
-G = total weight on the scale = R - Z
-T = active tare grams, or 0 when "0 g" is selected
+G = total weight on the scale = R (the scale's own reading)
+T = active tare grams, or 0 when no tare is active
 N = net weight shown big = G - T
 ```
 
-- `Z` lives only in memory. It is never persisted.
 - Negative values are shown as they are, never clamped to 0.
 - Saving a tare always stores `G`, never `N`.
 
@@ -155,15 +146,13 @@ N = net weight shown big = G - T
 | State | When | Big area shows | Tap on big area |
 | --- | --- | --- | --- |
 | Not connected | page opened, scan not started or stopped | button "Waage verbinden" | starts the scan (iOS requires a user tap) |
-| Empty scale needed | first frames after start; first frame after "not current"; return from background; page reload | "Waage leer? Antippen" plus the current raw value | confirms `Z = R`, only when the value is steady |
-| Live | fresh frames and a confirmed `Z` | `N` in grams, "netto · Tara 312 g" | saves `G` as tare (same as the "+" button) |
+| Live | scan running (before the first frame: "Warte auf Waage …"); a frame after "Not current" returns here | `N` in grams, "netto · Tara 312 g" | saves `G` as tare (same as the "+" button) |
 | Not current | no valid frame for more than 6 s | last `N`, struck through, "vor 24 s"; after 20 s a hint to wake the scale | nothing |
 
 Rules:
 
 - Leaving Safari or locking the phone stops the scan. Coming back goes to
-  "Not connected" (iOS needs a new tap to scan), and after that to "Empty
-  scale needed".
+  "Not connected" (iOS needs a new tap to scan), and after that to Live.
 - Frames that arrive while the page is hidden are ignored.
 - Scale identity (Claude's call): each scan locks onto the first valid
   frame's bytes 0-5 and ignores frames with other bytes 0-5 until the scan
@@ -173,7 +162,7 @@ Rules:
 - "Steady" = at least 3 frames over at least 1.5 s, all within 1 g, and the
   latest frame fresh. Use the delivery time; bursts make this slower, never
   wrongly faster.
-- The tare list and the "0 g" button work in every state. Saving a tare
+- The tare list works in every state. Saving a tare
   works only in Live while steady; otherwise the "+" button is disabled and
   tapping the weight does nothing.
 
@@ -190,15 +179,15 @@ Rules:
   sixth entry drops the bottom one. Show a short message
   "843 g als Tara gespeichert" with "Rückgängig", which restores the exact
   previous list and active selection.
-- **Select** (tap on an entry): the entry becomes active and moves to the
-  top; entries above it shift down by one; `lastUsedAt` updates.
-- **"0 g"**: no active tare (`T = 0`). The list does not change.
+- **Select** (tap on an inactive entry): the entry becomes active and moves
+  to the top; entries above it shift down by one; `lastUsedAt` updates.
+- **Deselect** (tap on the active entry): no active tare (`T = 0`). The
+  list does not change.
 - **Delete**: swipe an entry to the left to reveal "Löschen"; tapping it
   removes the entry. Show "312 g gelöscht" with "Rückgängig". If the
-  deleted entry was active, "0 g" becomes active.
+  deleted entry was active, no tare is active.
 - The list and the active selection persist across reloads. On reload the
-  last active tare stays selected, but no weight is shown until a new empty
-  reference is confirmed.
+  last active tare stays selected.
 
 ## Screen
 
@@ -213,7 +202,7 @@ small iPhone in Safari:
 3. Five full-width tare rows: grams large on the left, last-used date on
    the right ("heute 20:48", "14.10. 09:22"). Active row filled with the
    accent colour. Empty slots stay as blank rows so the layout does not jump.
-4. Bottom row: "0 g" (filled when active) and "+ Gewicht als Tara".
+4. Bottom row: "+ Gewicht als Tara" (full width).
 
 Behind `⋯` (a sheet):
 
@@ -222,11 +211,9 @@ Behind `⋯` (a sheet):
   and re-requests it when the page becomes visible again; the sheet shows
   whether the lock is actually held.
 - "Waage verbinden" / "Verbindung trennen".
-- "Leerwert neu setzen" (forces "Empty scale needed", for when someone
-  pressed the scale's tare button).
-- Diagnose: raw value, `Z`, last payload in hex, frames per second, dropped
+- Diagnose: raw value, last payload in hex, frames per second, dropped
   frames, beacio/API availability.
-- A short note: "Tara-Taste der Waage nicht benutzen. Waage nur in Safari
+- A short note: "Tara-Taste der Waage nur bei leerer Waage drücken. Waage nur in Safari
   öffnen, nicht als Web-App."
 
 UI text is German (Swiss spelling, "ss" not "ß"). Code, comments and docs
