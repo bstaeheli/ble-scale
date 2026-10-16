@@ -34,6 +34,7 @@ differs, this document wins.
   confirmed by the user's tests).
 - Sending anything to the scale: no GATT connection, no writes, no pairing,
   no tare command.
+- Body composition (impedance, fat, etc.) for the person scale.
 - Container names, recipes, sync between devices, export/import, cloud.
 - Typing in a tare value or editing a tare's grams (explicitly not wanted).
 - Background reception while the phone is locked.
@@ -85,10 +86,55 @@ driver module in `src/scales/` with `{ id, name, decode(adv) }`. `adv` is a
 normalized advertisement `{ name, manufacturerData: Map<companyId,
 Uint8Array> }`; `decode` returns `{ grams, scaleId }` or `null`.
 `src/scales/index.js` lists the drivers and tries them in order; the
-result carries `model` (driver id) and a scale id prefixed with it. The
-CK829 is the only driver for now. Adding a scale = adding one driver file
-and registering it. Only broadcast scales fit this interface; scales that
-need a GATT connection are out of scope (Claude's call).
+result carries `model` (driver id) and a scale id prefixed with it. Adding a scale = adding one driver file and registering it. Only broadcast
+scales fit this interface; scales that need a GATT connection are out of
+scope (Claude's call).
+
+`adv` also carries `id` (the BLE device id if available, else null) and
+`serviceData: Map<uuidString, Uint8Array>` (full 128-bit lowercase UUID
+strings as Web Bluetooth reports them). Each driver additionally declares:
+
+- `unit`: `'g'` or `'kg'`, the unit the app displays for this scale
+  (`'kg'` with two decimals, Swiss formatting "72,35 kg"). `decode` always
+  returns integer grams; the driver's `unit` only controls display.
+- `zeroReference`: `true` when the app must ask for an empty-scale
+  confirmation (CK829), `false` when the scale's own zero is trusted
+  (person scales re-zero themselves).
+- `tare`: `true` when tares apply (CK829), `false` otherwise.
+
+The registry result carries `{ grams, scaleId, model, unit, zeroReference,
+tare }`.
+
+Drivers in version 1:
+
+- `ck829`: kitchen scale, see "Confirmed facts". unit `g`,
+  zeroReference `true`, tare `true`.
+- `xiaomi-v1` (Mi Smart Scale) and `xiaomi-v2` (Mi Body Composition
+  Scale 2): person scales, weight only (no impedance or body metrics).
+  unit `kg`, zeroReference `false`, tare `false`. **Untested on
+  hardware**; protocol taken from
+  https://github.com/lolouk44/xiaomi_mi_scale:
+  - v1: service data UUID `0x181D`, at least 3 bytes. Byte 0 = control:
+    bit 5 stabilized, bit 7 load removed. Weight = bytes 1-2
+    little-endian × 0.01; unit by byte 0: `0x22`/`0xA2` → kg after
+    dividing by 2 (raw/200 kg), `0x03`/`0xB3` → lbs, `0x12`/`0xB2` → jin
+    (0.5 kg). Other control values → null.
+  - v2: service data UUID `0x181B`, 13 bytes. Byte 0 = unit: `0x02` →
+    kg after dividing by 2 (raw/200 kg), `0x03` → lbs. Byte 1 = control:
+    bit 5 stabilized, bit 7 load removed. Weight = bytes 11-12
+    little-endian × 0.01.
+  - Convert to integer grams (lbs × 453.59237, jin × 500, rounded).
+    Frames with "load removed" set return null (nobody on the scale;
+    never show 0).
+  - scaleId: the advertisement's device id when present, else the model
+    id.
+
+When the locked scale's `tare` is `false`, the big area shows the weight
+in kg directly in Live, the "+ Gewicht als Tara" button is disabled and a
+tap on the weight does nothing; the tare list stays visible and selectable
+but does not affect the shown weight. When `zeroReference` is `false`,
+the first frame goes straight to Live (no "Waage leer?" step) and a frame
+after "Not current" also returns straight to Live.
 
 ## Measurement model
 
