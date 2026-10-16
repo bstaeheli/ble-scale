@@ -42,7 +42,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .state.live { color: var(--live); }
 .state.warn { color: var(--warn); }
 .state.off { color: var(--muted); }
-.more { width: 40px; height: 36px; border: 0; background: none; color: var(--muted); font-size: 1.3rem; border-radius: 8px; }
+.more { width: 44px; height: 44px; border: 0; background: none; color: var(--muted); font-size: 1.3rem; border-radius: 8px; }
 
 /* Big area: one button whose content depends on the state */
 .weight { border: 0; background: none; border-radius: 16px; display: grid; justify-items: center; align-content: center; gap: 4px;
@@ -63,11 +63,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .list { list-style: none; margin: 0; padding: 0; min-height: 0; display: grid; grid-template-rows: repeat(5, minmax(0, 1fr));
   border-top: 1px solid var(--line); }
 .list li { border-bottom: 1px solid var(--line); min-height: 0; display: flex; }
-.list li.empty { align-items: center; padding: 0 12px; color: var(--muted); opacity: 0.6; font-size: 0.85rem; }
 .swipe { flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none;
   overscroll-behavior-x: contain; border-radius: 10px; }
 .swipe::-webkit-scrollbar { display: none; }
 .swipe > button { scroll-snap-align: end; border: 0; flex: none; }
+.swipe > button:focus-visible { outline-offset: -3px; }
 .pick { width: 100%; display: flex; align-items: center; justify-content: space-between; background: none; padding: 0 12px; text-align: left; }
 .pick b { font-size: 1.45rem; font-stretch: 75%; font-variant-numeric: tabular-nums; }
 .pick span { color: var(--muted); font-size: 0.85rem; }
@@ -86,7 +86,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .toast { position: absolute; left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right));
   bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); background: var(--ink); color: var(--bg); border-radius: 14px;
   padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
-.toast button { border: 0; background: none; color: inherit; font-weight: 750; text-decoration: underline; padding: 4px 0 4px 12px; }
+.toast button { border: 0; background: none; color: inherit; font-weight: 750; text-decoration: underline; min-height: 44px; padding: 0 0 0 12px; }
 
 /* Settings sheet (dialog): scrolls inside itself if the screen is short */
 .sheet { width: 100%; max-width: 480px; max-height: 90dvh; margin: auto auto 0; border: 0; border-radius: 20px 20px 0 0;
@@ -99,7 +99,7 @@ legend { padding: 0; color: var(--muted); font-size: 0.85rem; margin-bottom: 4px
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--line); border-radius: 12px; padding: 3px; }
 .seg label { position: relative; }
 .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; }
-.seg span { display: grid; place-items: center; min-height: 40px; border-radius: 9px; font-weight: 650; }
+.seg span { display: grid; place-items: center; min-height: 44px; border-radius: 9px; font-weight: 650; }
 .seg input:checked + span { background: var(--bg); }
 .seg input:focus-visible + span { outline: 3px solid var(--accent); }
 .hint { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
