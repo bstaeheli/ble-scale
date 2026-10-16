@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CK829 Bluefy Spike</title>
+<style>
+  body { font: 15px/1.4 -apple-system, system-ui, sans-serif; margin: 0; padding: 12px 16px env(safe-area-inset-bottom); background: #111; color: #eee; }
+  h1 { font-size: 17px; margin: 0 0 8px; }
+  #weight { font-size: 64px; font-weight: 700; text-align: center; margin: 8px 0; font-variant-numeric: tabular-nums; }
+  #meta { text-align: center; color: #aaa; }
+  button { font-size: 16px; min-height: 44px; margin: 4px 4px 4px 0; padding: 0 14px; border-radius: 8px; border: 0; background: #2a6; color: #fff; }
+  button.alt { background: #456; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  td { padding: 2px 4px; border-bottom: 1px solid #333; }
+  td:last-child { text-align: right; font-weight: 600; }
+  pre { background: #000; padding: 8px; font-size: 11px; height: 35vh; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body>
+<h1>CK829 / Bluefy feasibility spike (throwaway)</h1>
+
+<table id="checks"></table>
+
+<button id="scan">1. requestLEScan</button>
+<button id="watch" class="alt">2. requestDevice + watchAdvertisements</button>
+<button id="stop" class="alt">Stop</button>
+<button id="copy" class="alt">Copy log</button>
+
+<div id="weight">–</div>
+<div id="meta">no frame yet</div>
+
+<pre id="log"></pre>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const logLines = [];
+function log(msg) {
+  const line = new Date().toISOString().slice(11, 23) + ' ' + msg;
+  logLines.push(line);
+  if (logLines.length > 500) logLines.shift();
+  $('log').textContent = logLines.slice().reverse().join('\n');
+}
+const hex = (u8) => Array.from(u8, (b) => b.toString(16).padStart(2, '0')).join(' ');
+
+// Decoder per requirements doc section 3.2 (payload = manufacturer data without company ID).
+function decode(p) {
+  if (p.length !== 18) return { error: 'length ' + p.length };
+  if (p[6] !== 0xca || p[7] !== 0x01 || p[8] !== 0x04) return { error: 'prefix' };
+  let x = 0;
+  for (let i = 6; i <= 15; i++) x ^= p[i];
+  if (x !== p[16]) return { error: 'xor' };
+  const mag = p[9] + 256 * p[10];
+  const sign = hex(p.subarray(11, 14));
+  if (sign === '00 00 00') return { grams: mag, unit: p[14] };
+  if (sign === 'ff ff ff') return { grams: -mag, unit: p[14] };
+  return { error: 'sign ' + sign };
+}
+
+// Feature checks
+function renderChecks(extra = {}) {
+  const bt = navigator.bluetooth;
+  const rows = {
+    'userAgent': navigator.userAgent.slice(0, 60) + '…',
+    'isSecureContext': isSecureContext,
+    'navigator.onLine': navigator.onLine,
+    'navigator.bluetooth': !!bt,
+    'requestLEScan': !!(bt && bt.requestLEScan),
+    'requestDevice': !!(bt && bt.requestDevice),
+    'watchAdvertisements': !!(window.BluetoothDevice && BluetoothDevice.prototype.watchAdvertisements),
+    'serviceWorker in navigator': 'serviceWorker' in navigator,
+    'wakeLock in navigator': 'wakeLock' in navigator,
+    ...extra,
+  };
+  $('checks').innerHTML = Object.entries(rows)
+    .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+}
+const swState = {};
+renderChecks();
+addEventListener('online', () => renderChecks(swState));
+addEventListener('offline', () => renderChecks(swState));
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(
+    (r) => { swState['SW registered'] = true; log('SW registered, scope ' + r.scope); },
+    (e) => { swState['SW registered'] = 'ERR ' + e.message; log('SW register failed: ' + e); },
+  ).finally(() => {
+    swState['SW controls page'] = !!navigator.serviceWorker.controller;
+    renderChecks(swState);
+  });
+}
+
+// Advertisement handling
+let frames = 0, bad = 0, lastAt = 0, scan = null, device = null;
+function onAdv(ev) {
+  const name = ev.device && ev.device.name;
+  const md = ev.manufacturerData;
+  if (!md || md.size === 0) {
+    if (name === 'LFSc') log(`LFSc adv WITHOUT manufacturerData rssi=${ev.rssi}`);
+    return;
+  }
+  for (const [cid, dv] of md) {
+    const p = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+    const d = decode(p);
+    if (d.error && name !== 'LFSc') continue; // ignore unrelated devices
+    log(`${name || '?'} cid=0x${cid.toString(16).padStart(4, '0')} rssi=${ev.rssi} [${hex(p)}] ${d.error ? 'ERR ' + d.error : d.grams + ' g unit=' + d.unit}`);
+    if (d.error) { bad++; continue; }
+    const now = performance.now();
+    const dt = lastAt ? ((now - lastAt) / 1000).toFixed(2) + ' s since prev' : '';
+    lastAt = now; frames++;
+    $('weight').textContent = d.grams + ' g';
+    $('meta').textContent = `frames ok=${frames} bad=${bad} ${dt}`;
+  }
+}
+
+// Staleness display, so we can see when the scale stops sending.
+setInterval(() => {
+  if (lastAt) $('meta').dataset.age = ((performance.now() - lastAt) / 1000).toFixed(1);
+  if (lastAt && performance.now() - lastAt > 6000) $('weight').style.opacity = 0.3;
+  else $('weight').style.opacity = 1;
+}, 250);
+
+$('scan').onclick = async () => {
+  try {
+    scan = await navigator.bluetooth.requestLEScan({ acceptAllAdvertisements: true, keepRepeatedDevices: true });
+    navigator.bluetooth.addEventListener('advertisementreceived', onAdv);
+    log('requestLEScan started, active=' + scan.active);
+  } catch (e) {
+    log('requestLEScan (acceptAll) failed: ' + e);
+    try {
+      scan = await navigator.bluetooth.requestLEScan({ filters: [{ name: 'LFSc' }], keepRepeatedDevices: true });
+      navigator.bluetooth.addEventListener('advertisementreceived', onAdv);
+      log('requestLEScan (name filter) started');
+    } catch (e2) { log('requestLEScan (name filter) failed: ' + e2); }
+  }
+};
+
+$('watch').onclick = async () => {
+  try {
+    device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'LFSc' }], optionalManufacturerData: [0x0000] });
+    log('picked device ' + device.name + ' id=' + device.id);
+    device.addEventListener('advertisementreceived', onAdv);
+    await device.watchAdvertisements();
+    log('watchAdvertisements started, watching=' + device.watchingAdvertisements);
+  } catch (e) { log('requestDevice/watchAdvertisements failed: ' + e); }
+};
+
+$('stop').onclick = () => {
+  try { scan && scan.stop(); } catch (e) { log('stop scan: ' + e); }
+  try { device && device.unwatchAdvertisements && device.unwatchAdvertisements(); } catch (e) { log('unwatch: ' + e); }
+  navigator.bluetooth && navigator.bluetooth.removeEventListener('advertisementreceived', onAdv);
+  log('stopped');
+};
+
+$('copy').onclick = () => navigator.clipboard.writeText(logLines.join('\n')).then(
+  () => log('log copied'), (e) => log('copy failed: ' + e));
+
+document.addEventListener('visibilitychange', () => log('visibility ' + document.visibilityState));
+log('page loaded');
+</script>
+</body>
+</html>
