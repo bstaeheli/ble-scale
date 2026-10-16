@@ -1,4 +1,6 @@
 // BLE scan adapter for Safari + beacio (navigator.bluetooth.requestLEScan).
+import { drivers } from './scales/index.js';
+
 let scan = null;
 let listener = null;
 
@@ -20,7 +22,10 @@ export const scanAvailable = () => typeof navigator !== 'undefined' && !!navigat
 // so iOS keeps the user activation.
 export function startScan(onAdvertisement) {
   stopScan();
-  const request = navigator.bluetooth.requestLEScan({ acceptAllAdvertisements: true, keepRepeatedDevices: true });
+  // Filter to known scales: acceptAllAdvertisements makes beacio relay every nearby device,
+  // which backs up its delivery queue and shows the weight seconds late.
+  const filters = drivers.flatMap((d) => d.filters);
+  const request = navigator.bluetooth.requestLEScan({ filters, keepRepeatedDevices: true });
   const mine = (e) => onAdvertisement(normalize(e));
   listener = mine;
   navigator.bluetooth.addEventListener('advertisementreceived', mine);

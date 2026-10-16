@@ -25,3 +25,22 @@ test('normalize always sets id and serviceData', () => {
   assert.ok(a.serviceData instanceof Map);
   assert.equal(a.serviceData.size, 0);
 });
+
+test('startScan filters to known scales instead of accepting all advertisements', async () => {
+  const { startScan, stopScan } = await import('../src/ble.js');
+  let opts = null;
+  const bluetooth = {
+    requestLEScan: async (o) => { opts = o; return { stop() {} }; },
+    addEventListener() {}, removeEventListener() {},
+  };
+  const saved = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value: { bluetooth }, configurable: true });
+  try {
+    await startScan(() => {});
+    assert.equal(opts.acceptAllAdvertisements, undefined);
+    assert.equal(opts.keepRepeatedDevices, true);
+    assert.deepEqual(opts.filters[0], { namePrefix: 'LFSc', manufacturerData: [{ companyIdentifier: 0x0000 }] });
+    assert.ok(opts.filters.some((f) => f.name === 'MIBFS'));
+    stopScan();
+  } finally { if (saved) Object.defineProperty(globalThis, 'navigator', saved); else delete globalThis.navigator; }
+});

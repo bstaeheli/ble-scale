@@ -12,6 +12,7 @@ export const xiaomiV1 = {
   id: 'xiaomi-v1',
   name: 'Xiaomi Mi Smart Scale',
   ...person,
+  filters: [{ name: 'MI_SCALE' }, { name: 'MI SCALE2' }],
   decode(adv) {
     const d = adv.serviceData.get(UUID_V1);
     if (!d || d.length < 3) return null;
@@ -26,6 +27,7 @@ export const xiaomiV2 = {
   id: 'xiaomi-v2',
   name: 'Xiaomi Mi Body Composition Scale 2',
   ...person,
+  filters: [{ name: 'MIBFS' }],
   decode(adv) {
     const d = adv.serviceData.get(UUID_V2);
     if (!d || d.length !== 13 || d[1] & 0x80) return null;

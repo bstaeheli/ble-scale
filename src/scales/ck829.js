@@ -6,6 +6,7 @@ export const ck829 = {
   unit: 'g',
   zeroReference: true,
   tare: true,
+  filters: [{ namePrefix: 'LFSc', manufacturerData: [{ companyIdentifier: 0x0000 }] }],
   decode(adv) {
     const f = adv.manufacturerData.get(0x0000);
     if (!f || f.length !== 18) return null;
