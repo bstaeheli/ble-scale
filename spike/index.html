@@ -61,7 +61,7 @@ function decode(p) {
 function renderChecks(extra = {}) {
   const bt = navigator.bluetooth;
   const rows = {
-    'spike version': 2,
+    'spike version': 3,
     'userAgent':navigator.userAgent.slice(0, 60) + '…',
     'isSecureContext': isSecureContext,
     'navigator.onLine': navigator.onLine,
@@ -101,6 +101,21 @@ function onAdv(ev, fromDevice) {
   if (fromDevice || name === 'LFSc') {
     log(`event #${events} src=${fromDevice ? 'device' : 'bluetooth'} name=${name} rssi=${ev.rssi} tx=${ev.txPower} ` +
         `md=${md ? md.size : 'none'} sd=${ev.serviceData ? ev.serviceData.size : 'none'} uuids=${JSON.stringify(ev.uuids)}`);
+  }
+  // Bluefy delivers events without manufacturerData: dump every property once to find where it hides.
+  if (fromDevice && events <= 2) {
+    const keys = [];
+    for (const k in ev) keys.push(k);
+    log('event keys: ' + keys.join(','));
+    log('own props: ' + JSON.stringify(Object.getOwnPropertyNames(ev)));
+    for (const k of keys) {
+      const v = ev[k];
+      if (v && typeof v === 'object' && !(v instanceof Node) && k !== 'device' && k !== 'target' && k !== 'currentTarget' && k !== 'srcElement') {
+        let s;
+        try { s = v instanceof Map ? 'Map size ' + v.size : JSON.stringify(v); } catch (e) { s = String(v); }
+        log(`  ${k} = ${String(s).slice(0, 300)}`);
+      }
+    }
   }
   if (!md || md.size === 0) return;
   for (const [cid, dv] of md) {
