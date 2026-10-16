@@ -57,7 +57,7 @@ export class Measurement {
 
   isSteady(now) {
     const s = this.samples.filter((x) => now - x.t <= WINDOW_MS);
-    if (s.length < this.o.steadyFrames || s.length === 0) return false;
+    if (new Set(s.map((x) => x.t)).size < this.o.steadyFrames || s.length === 0) return false;
     const last = s[s.length - 1];
     const gs = s.map((x) => x.g);
     return (

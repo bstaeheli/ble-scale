@@ -125,3 +125,13 @@ test('stale/wake cycles do not accumulate offset', () => {
     t += 6001;
   }
 });
+
+test('burst counts as one delivery for steadiness', () => {
+  const m = new Measurement();
+  m.connect(0);
+  m.frame(f(0), 0);
+  for (let i = 0; i < 30; i++) m.frame(f(0), 1500);
+  assert.equal(m.isSteady(1500), false);
+  m.frame(f(0), 1600);
+  assert.equal(m.isSteady(1600), true);
+});
