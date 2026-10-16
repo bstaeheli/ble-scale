@@ -61,7 +61,8 @@ function decode(p) {
 function renderChecks(extra = {}) {
   const bt = navigator.bluetooth;
   const rows = {
-    'userAgent': navigator.userAgent.slice(0, 60) + '…',
+    'spike version': 2,
+    'userAgent':navigator.userAgent.slice(0, 60) + '…',
     'isSecureContext': isSecureContext,
     'navigator.onLine': navigator.onLine,
     'navigator.bluetooth': !!bt,
@@ -91,18 +92,21 @@ if ('serviceWorker' in navigator) {
 }
 
 // Advertisement handling
-let frames = 0, bad = 0, lastAt = 0, scan = null, device = null;
-function onAdv(ev) {
+let frames = 0, bad = 0, events = 0, lastAt = 0, scan = null, device = null;
+function onAdv(ev, fromDevice) {
+  events++;
   const name = ev.device && ev.device.name;
   const md = ev.manufacturerData;
-  if (!md || md.size === 0) {
-    if (name === 'LFSc') log(`LFSc adv WITHOUT manufacturerData rssi=${ev.rssi}`);
-    return;
+  // Device-level events come from the picked LFSc only, so dump them all.
+  if (fromDevice || name === 'LFSc') {
+    log(`event #${events} src=${fromDevice ? 'device' : 'bluetooth'} name=${name} rssi=${ev.rssi} tx=${ev.txPower} ` +
+        `md=${md ? md.size : 'none'} sd=${ev.serviceData ? ev.serviceData.size : 'none'} uuids=${JSON.stringify(ev.uuids)}`);
   }
+  if (!md || md.size === 0) return;
   for (const [cid, dv] of md) {
     const p = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
     const d = decode(p);
-    if (d.error && name !== 'LFSc') continue; // ignore unrelated devices
+    if (d.error && !fromDevice && name !== 'LFSc') continue; // ignore unrelated devices
     log(`${name || '?'} cid=0x${cid.toString(16).padStart(4, '0')} rssi=${ev.rssi} [${hex(p)}] ${d.error ? 'ERR ' + d.error : d.grams + ' g unit=' + d.unit}`);
     if (d.error) { bad++; continue; }
     const now = performance.now();
@@ -139,7 +143,10 @@ $('watch').onclick = async () => {
   try {
     device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'LFSc' }], optionalManufacturerData: [0x0000] });
     log('picked device ' + device.name + ' id=' + device.id);
-    device.addEventListener('advertisementreceived', onAdv);
+    device.addEventListener('advertisementreceived', (ev) => onAdv(ev, true));
+    // Some implementations may dispatch on navigator.bluetooth instead of the device.
+    navigator.bluetooth.addEventListener('advertisementreceived', (ev) => onAdv(ev, false));
+    device.onadvertisementreceived = () => log('onadvertisementreceived handler fired');
     await device.watchAdvertisements();
     log('watchAdvertisements started, watching=' + device.watchingAdvertisements);
   } catch (e) { log('requestDevice/watchAdvertisements failed: ' + e); }

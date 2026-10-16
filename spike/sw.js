@@ -1,13 +1,18 @@
-// Cache-first service worker: only tests whether the page starts offline.
-const CACHE = 'ck829-spike-v1';
+// Network-first service worker: fresh page when online, cached page when offline.
+const CACHE = 'ck829-spike-v2';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', 'index.html', 'sw.js'])));
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (e) => e.waitUntil(
+  caches.keys()
+    .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    .then(() => self.clients.claim())));
 
 self.addEventListener('fetch', (e) => {
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((r) => r || fetch(e.request)));
+  e.respondWith(fetch(e.request)
+    .then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return r; })
+    .catch(() => caches.match(e.request, { ignoreSearch: true })));
 });
