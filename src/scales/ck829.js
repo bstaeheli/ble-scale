@@ -3,6 +3,9 @@ const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(':
 export const ck829 = {
   id: 'ck829',
   name: 'CK829 (LFSc)',
+  unit: 'g',
+  zeroReference: true,
+  tare: true,
   decode(adv) {
     const f = adv.manufacturerData.get(0x0000);
     if (!f || f.length !== 18) return null;

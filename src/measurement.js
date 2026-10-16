@@ -16,6 +16,8 @@ export class Measurement {
     this.zero = null;
     this.scaleId = null;
     this.staleTotal = null;
+    this.unit = null;
+    this.tare = null;
   }
 
   connect(now) {
@@ -30,14 +32,20 @@ export class Measurement {
     this.samples = [];
   }
 
-  frame({ grams, scaleId }, now) {
+  frame({ grams, scaleId, unit = 'g', zeroReference = true, tare = true }, now) {
     if (this.phase === 'disconnected') return false;
     if (this.scaleId !== null && scaleId !== this.scaleId) return false;
     this.scaleId = scaleId;
+    this.unit = unit;
+    this.tare = tare;
     if (this.phase === 'stale') {
       this.phase = 'needEmpty';
       this.staleTotal = null;
       this.samples = [];
+    }
+    if (!zeroReference) {
+      this.zero = 0;
+      this.phase = 'live';
     }
     this.raw = grams;
     this.lastT = now;
@@ -92,6 +100,8 @@ export class Measurement {
       steady: this.isSteady(now),
       hint: this.phase !== 'disconnected' && now - since > this.o.hintMs,
       scaleId: this.scaleId,
+      unit: this.unit,
+      tare: this.tare,
     };
   }
 }

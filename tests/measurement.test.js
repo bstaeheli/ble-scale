@@ -135,3 +135,36 @@ test('burst counts as one delivery for steadiness', () => {
   m.frame(f(0), 1600);
   assert.equal(m.isSteady(1600), true);
 });
+
+test('person scale: first frame is live without confirmEmpty', () => {
+  const m = new Measurement();
+  m.connect(0);
+  assert.equal(m.view(0).unit, null);
+  m.frame({ grams: 72350, scaleId: 'S', unit: 'kg', zeroReference: false, tare: false }, 100);
+  const v = m.view(100);
+  assert.equal(v.phase, 'live');
+  assert.equal(v.total, 72350);
+  assert.equal(v.unit, 'kg');
+  assert.equal(v.tare, false);
+});
+
+test('person scale: frame after stale returns straight to live', () => {
+  const m = new Measurement();
+  m.connect(0);
+  const r = (g) => ({ grams: g, scaleId: 'S', unit: 'kg', zeroReference: false, tare: false });
+  m.frame(r(70000), 0);
+  m.tick(7000);
+  assert.equal(m.view(7000).phase, 'stale');
+  m.frame(r(71000), 8000);
+  assert.equal(m.view(8000).phase, 'live');
+  assert.equal(m.view(8000).total, 71000);
+});
+
+test('kitchen scale readings keep confirm flow and expose unit/tare', () => {
+  const m = new Measurement();
+  m.connect(0);
+  m.frame({ grams: 0, scaleId: 'A', unit: 'g', zeroReference: true, tare: true }, 0);
+  assert.equal(m.view(0).phase, 'needEmpty');
+  assert.equal(m.view(0).unit, 'g');
+  assert.equal(m.view(0).tare, true);
+});
