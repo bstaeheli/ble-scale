@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f8faf9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151c1a" media="(prefers-color-scheme: dark)">
+<title>Waage</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="src/app.js"></script>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <span id="state" class="state off" role="status">Waage nicht verbunden</span>
+    <button id="more" class="more" type="button" aria-label="Einstellungen" aria-haspopup="dialog">⋯</button>
+  </header>
+
+  <button id="big" class="weight" type="button">
+    <span class="connect">Waage verbinden</span>
+    <span class="sub">Waage einschalten, dann tippen.</span>
+  </button>
+
+  <ul id="tares" class="list" aria-label="Taras">
+    <li class="empty">frei</li>
+    <li class="empty">frei</li>
+    <li class="empty">frei</li>
+    <li class="empty">frei</li>
+    <li class="empty">frei</li>
+  </ul>
+
+  <div class="actions">
+    <button id="zero" class="btn on" type="button" aria-pressed="true">0 g</button>
+    <button id="save" class="btn primary" type="button" disabled>+ Gewicht als Tara</button>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden>
+    <span id="toast-text"></span>
+    <button id="undo" type="button">Rückgängig</button>
+  </div>
+</main>
+
+<!-- One filled tare row: swipe left to reveal "Löschen" (native scroll-snap, no gesture JS). -->
+<template id="tare-row">
+  <li>
+    <div class="swipe">
+      <button class="pick" type="button"><b></b><span></span></button>
+      <button class="del" type="button">Löschen</button>
+    </div>
+  </li>
+</template>
+
+<dialog id="sheet" class="sheet" aria-label="Einstellungen">
+  <form method="dialog" class="sheet-head">
+    <h2>Einstellungen</h2>
+    <button id="close" class="more" aria-label="Schliessen">✕</button>
+  </form>
+
+  <fieldset>
+    <legend>Darstellung</legend>
+    <div class="seg">
+      <label><input type="radio" name="theme" id="theme-auto" value="auto" checked><span>Auto</span></label>
+      <label><input type="radio" name="theme" id="theme-day" value="day"><span>Tag</span></label>
+      <label><input type="radio" name="theme" id="theme-night" value="night"><span>Nacht</span></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Bildschirm</legend>
+    <div class="seg">
+      <label><input type="radio" name="display" id="display-awake" value="awake"><span>Wach</span></label>
+      <label><input type="radio" name="display" id="display-standby" value="standby" checked><span>Standby</span></label>
+    </div>
+  </fieldset>
+  <p id="wake-status" class="hint">Bildschirm darf sich ausschalten.</p>
+
+  <div class="sheet-actions">
+    <button id="connect" class="btn primary" type="button">Waage verbinden</button>
+    <button id="disconnect" class="btn" type="button" hidden>Verbindung trennen</button>
+    <button id="rezero" class="btn" type="button">Leerwert neu setzen</button>
+  </div>
+
+  <details>
+    <summary>Diagnose</summary>
+    <pre id="diag">–</pre>
+  </details>
+
+  <p class="hint">Tara-Taste der Waage nicht benutzen. Waage nur in Safari öffnen, nicht als Web-App.</p>
+</dialog>
+</body>
+</html>
