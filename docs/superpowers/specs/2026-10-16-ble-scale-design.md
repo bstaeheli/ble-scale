@@ -78,6 +78,18 @@ From the requirements study and the spike tests on 2026-10-16:
   `0 g`. So the scale's own zero cannot be trusted after any interruption;
   the app needs its own empty reference (see below).
 
+## Scale drivers
+
+Other BLE broadcast scales must be addable later. Each scale model is a
+driver module in `src/scales/` with `{ id, name, decode(adv) }`. `adv` is a
+normalized advertisement `{ name, manufacturerData: Map<companyId,
+Uint8Array> }`; `decode` returns `{ grams, scaleId }` or `null`.
+`src/scales/index.js` lists the drivers and tries them in order; the
+result carries `model` (driver id) and a scale id prefixed with it. The
+CK829 is the only driver for now. Adding a scale = adding one driver file
+and registering it. Only broadcast scales fit this interface; scales that
+need a GATT connection are out of scope (Claude's call).
+
 ## Measurement model
 
 ```
