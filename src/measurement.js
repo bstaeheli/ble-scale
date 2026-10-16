@@ -65,12 +65,19 @@ export class Measurement {
 
   isSteady(now) {
     const s = this.samples.filter((x) => now - x.t <= WINDOW_MS);
-    if (new Set(s.map((x) => x.t)).size < this.o.steadyFrames || s.length === 0) return false;
-    const last = s[s.length - 1];
-    const gs = s.map((x) => x.g);
+    if (s.length === 0) return false;
+    // Trailing run: walk back from the newest sample while the run stays within steadyRangeG.
+    let lo = s[s.length - 1].g, hi = lo, i = s.length - 1;
+    while (i > 0) {
+      const g = s[i - 1].g;
+      if (Math.max(hi, g) - Math.min(lo, g) > this.o.steadyRangeG) break;
+      lo = Math.min(lo, g); hi = Math.max(hi, g); i--;
+    }
+    const run = s.slice(i);
+    const last = run[run.length - 1];
     return (
-      last.t - s[0].t >= this.o.steadyMs &&
-      Math.max(...gs) - Math.min(...gs) <= this.o.steadyRangeG &&
+      new Set(run.map((x) => x.t)).size >= this.o.steadyFrames &&
+      last.t - run[0].t >= this.o.steadyMs &&
       now - last.t <= this.o.staleMs
     );
   }

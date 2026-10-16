@@ -168,3 +168,13 @@ test('kitchen scale readings keep confirm flow and expose unit/tare', () => {
   assert.equal(m.view(0).unit, 'g');
   assert.equal(m.view(0).tare, true);
 });
+
+test('steady at change + 1.5 s, not before', () => {
+  const m = new Measurement();
+  m.connect(0);
+  for (let t = 0; t <= 3000; t += 100) m.frame(f(0), t);
+  for (let t = 3100; t <= 4500; t += 100) m.frame(f(843), t);
+  assert.equal(m.isSteady(4500), false);
+  m.frame(f(843), 4600);
+  assert.equal(m.isSteady(4600), true);
+});
