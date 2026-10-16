@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 const el = {
   state: $('state'), more: $('more'), big: $('big'), tares: $('tares'), row: $('tare-row'), zero: $('zero'), save: $('save'),
   toast: $('toast'), toastText: $('toast-text'), undo: $('undo'), sheet: $('sheet'), wake: $('wake-status'),
-  connect: $('connect'), disconnect: $('disconnect'), rezero: $('rezero'), diag: $('diag'),
+  connect: $('connect'), disconnect: $('disconnect'), rezero: $('rezero'), diag: $('diag'), version: $('version'),
 };
 
 const demo = new URLSearchParams(location.search).get('demo') === '1';
@@ -302,3 +302,10 @@ function demoScanner() {
     stopScan() { clearInterval(timer); },
   };
 }
+
+// ---------- version (version.txt is written by the Pages workflow) ----------
+fetch('version.txt', { cache: 'no-cache' })
+  .then((r) => (r.ok ? r.text() : Promise.reject()))
+  .then((t) => t.trim() || Promise.reject())
+  .catch(() => 'dev')
+  .then((v) => { el.version.textContent = `Version ${v}`; });

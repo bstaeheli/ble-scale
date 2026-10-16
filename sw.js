@@ -1,6 +1,6 @@
 // Offline support: precache the app, then network-first with cache fallback.
 // Bump CACHE on each release.
-const CACHE = 'waage-v3';
+const CACHE = 'waage-v4';
 const FILES = [
   './',
   'index.html',
